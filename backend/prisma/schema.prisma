@@ -1,0 +1,238 @@
+// Prisma schema for Music Gear Inventory System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id                   String               @id @default(uuid())
+  email                String               @unique
+  passwordHash         String
+  name                 String
+  role                 UserRole             @default(MEMBER)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  organizations        OrganizationMember[]
+  ownedOrganizations   Organization[]       @relation("OrganizationOwner")
+  assignedEquipment    Equipment[]          @relation("EquipmentAssignee")
+  maintenanceLogs      MaintenanceLog[]     @relation("MaintenancePerformer")
+  eventsCheckedOut     EventEquipment[]     @relation("CheckedOutBy")
+  eventsCheckedIn      EventEquipment[]     @relation("CheckedInBy")
+  rentalTransactions   RentalTransaction[]  @relation("RentalCreatedBy")
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+}
+
+// Organization model
+model Organization {
+  id                String               @id @default(uuid())
+  name              String
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  ownerId           String
+  owner             User                 @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  members           OrganizationMember[]
+  equipment         Equipment[]
+  categories        EquipmentCategory[]
+  events            Event[]
+  rentalClients     RentalClient[]
+}
+
+// Organization membership model
+model OrganizationMember {
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  joinedAt       DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Equipment category model
+model EquipmentCategory {
+  id                String              @id @default(uuid())
+  name              String
+  organizationId    String
+  parentCategoryId  String?
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentCategory    EquipmentCategory?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  childCategories   EquipmentCategory[] @relation("CategoryHierarchy")
+  equipment         Equipment[]
+
+  @@unique([name, organizationId])
+}
+
+// Equipment model
+model Equipment {
+  id                 String              @id @default(uuid())
+  name               String
+  type               String
+  brand              String?
+  model              String?
+  serialNumber       String?
+  purchaseDate       DateTime?
+  purchasePrice      Decimal?            @db.Decimal(10, 2)
+  currentValue       Decimal?            @db.Decimal(10, 2)
+  condition          EquipmentCondition? @default(GOOD)
+  notes              String?
+  isActive           Boolean             @default(true)
+  location           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organizationId     String
+  categoryId         String?
+  assignedToId       String?
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category           EquipmentCategory?  @relation(fields: [categoryId], references: [id])
+  assignedTo         User?               @relation("EquipmentAssignee", fields: [assignedToId], references: [id])
+  photos             EquipmentPhoto[]
+  maintenanceSchedules MaintenanceSchedule[]
+  maintenanceLogs    MaintenanceLog[]
+  eventEquipment     EventEquipment[]
+  rentalItems        RentalItem[]
+}
+
+enum EquipmentCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+// Equipment photo model
+model EquipmentPhoto {
+  id          String    @id @default(uuid())
+  equipmentId String
+  photoUrl    String
+  isPrimary   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+// Maintenance schedule model
+model MaintenanceSchedule {
+  id             String    @id @default(uuid())
+  equipmentId    String
+  maintenanceType String
+  frequencyDays  Int
+  lastPerformed  DateTime?
+  nextDue        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  equipment      Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+}
+
+// Maintenance log model
+model MaintenanceLog {
+  id             String    @id @default(uuid())
+  equipmentId    String
+  maintenanceType String
+  performedDate  DateTime
+  performedById  String
+  cost           Decimal?  @db.Decimal(10, 2)
+  notes          String?
+  receiptUrl     String?
+  createdAt      DateTime  @default(now())
+  equipment      Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  performedBy    User      @relation("MaintenancePerformer", fields: [performedById], references: [id])
+}
+
+// Event model
+model Event {
+  id             String          @id @default(uuid())
+  name           String
+  description    String?
+  startDate      DateTime
+  endDate        DateTime
+  location       String?
+  organizationId String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  equipment      EventEquipment[]
+}
+
+// Event equipment model
+model EventEquipment {
+  eventId      String
+  equipmentId  String
+  checkedOut   DateTime
+  checkedIn    DateTime?
+  checkedOutById String
+  checkedInById  String?
+  notes        String?
+  event        Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  equipment    Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  checkedOutBy User      @relation("CheckedOutBy", fields: [checkedOutById], references: [id])
+  checkedInBy  User?     @relation("CheckedInBy", fields: [checkedInById], references: [id])
+
+  @@id([eventId, equipmentId])
+}
+
+// Rental client model
+model RentalClient {
+  id             String             @id @default(uuid())
+  name           String
+  email          String?
+  phone          String?
+  organizationId String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rentals        RentalTransaction[]
+}
+
+// Rental transaction model
+model RentalTransaction {
+  id          String          @id @default(uuid())
+  clientId    String
+  startDate   DateTime
+  endDate     DateTime
+  totalAmount Decimal?        @db.Decimal(10, 2)
+  status      RentalStatus    @default(PENDING)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdById String
+  client      RentalClient    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("RentalCreatedBy", fields: [createdById], references: [id])
+  items       RentalItem[]
+}
+
+enum RentalStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// Rental item model
+model RentalItem {
+  rentalId      String
+  equipmentId   String
+  rate          Decimal             @db.Decimal(10, 2)
+  conditionOut  EquipmentCondition  @default(GOOD)
+  conditionIn   EquipmentCondition?
+  notes         String?
+  rental        RentalTransaction   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+  equipment     Equipment           @relation(fields: [equipmentId], references: [id])
+
+  @@id([rentalId, equipmentId])
+}
