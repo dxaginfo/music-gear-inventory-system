@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # Frontend React application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:5000/api
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # Backend Node.js API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/music_gear_inventory
+      - JWT_SECRET=your_jwt_secret_key_here
+      - JWT_EXPIRATION=15m
+      - JWT_REFRESH_EXPIRATION=7d
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=your_access_key_here
+      - AWS_SECRET_ACCESS_KEY=your_secret_key_here
+      - AWS_REGION=us-east-1
+      - AWS_S3_BUCKET=your-bucket-name
+      - FIREBASE_PROJECT_ID=your-project-id
+      - FIREBASE_CLIENT_EMAIL=your-client-email
+      - FIREBASE_PRIVATE_KEY=your-private-key
+    depends_on:
+      - db
+      - redis
+    networks:
+      - app-network
+
+  # PostgreSQL database
+  db:
+    image: postgres:13-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=music_gear_inventory
+    networks:
+      - app-network
+
+  # Redis cache
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  # Adminer - Database management UI
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
