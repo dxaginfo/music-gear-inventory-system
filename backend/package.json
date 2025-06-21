@@ -1,0 +1,50 @@
+{
+  "name": "music-gear-inventory-system-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Music Gear Inventory System",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest",
+    "lint": "eslint .",
+    "migrate": "prisma migrate deploy",
+    "seed": "node prisma/seed.js"
+  },
+  "keywords": [
+    "music",
+    "gear",
+    "equipment",
+    "inventory",
+    "maintenance",
+    "api"
+  ],
+  "author": "DX AG",
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^4.16.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "firebase-admin": "^11.10.1",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "redis": "^4.6.7",
+    "uuid": "^9.0.0",
+    "winston": "^3.10.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.44.0",
+    "jest": "^29.6.1",
+    "nodemon": "^3.0.1",
+    "prisma": "^4.16.0",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
